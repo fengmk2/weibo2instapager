@@ -1,0 +1,21 @@
+
+{{if user}}
+${user.username}, Welcome.
+
+<h2>微博收藏 to <a href="http://www.instapaper.com/">Instapaper</a></h2>
+<ul>
+    {{if binds.tsina}}
+    <li><a href="${binds.tsina.t_url}" target="_blank">@${binds.tsina.screen_name}</a></li>
+    {{else}}
+    <li><a href="/oauth?blogtype=tsina">绑定新浪微博</a></li>
+    {{/if}}
+</ul>
+{{else}}
+<form method="post" action="/login">
+    <fieldset>
+        <p><label for="username">UserName</label>: <input type="text" id="username" name="username" /></p>
+        <p><label for="password">Password</label>: <input type="password" id="password" name="password" /></p>
+        <p><input type="submit" id="login_btn" value="Login" /></p>
+    </fieldset>
+</form>
+{{/if}}
