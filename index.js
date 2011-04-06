@@ -7,7 +7,7 @@ var weibo = require('./node-weibo')
 // set weibo appkey
 weibo.init('tsina', '1726331711', '25e94901457772fec1a16d52388011bf');
 
-var home_url = 'http://localhost:8888';
+var home_url = 'http://rl.nodester.com';
 var app = express.createServer();
 
 //use jqtpl in express
