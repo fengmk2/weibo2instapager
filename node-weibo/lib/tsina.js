@@ -153,7 +153,7 @@ exports.TSinaAPI = {
         
         oauth_authorize: 	  '/oauth/authorize',
         oauth_request_token:  '/oauth/request_token',
-        oauth_callback: '',
+        oauth_callback: 'oob',
         oauth_access_token:   '/oauth/access_token',
         
         // 图片上传字段名称
@@ -412,14 +412,10 @@ exports.TSinaAPI = {
     // 获取认证url
     get_authorization_url: function(user, auth_callback, callback, context) {
     	var auth_url = null;
-    	auth_callback = auth_callback || 'oob';
-		this.get_request_token(user, function(token, error, response) {
+		this.get_request_token(user, auth_callback, function(token, error, response) {
 			if(token) {
     			// 返回登录url给用户登录
     			var params = {oauth_token: token.oauth_token, oauth_callback: auth_callback};
-    			if(this.config.oauth_callback) {
-        			params.oauth_callback = this.config.oauth_callback;
-        		}
     			auth_url = this.format_authorization_url(params);
     			user.oauth_token_key = token.oauth_token;
     			user.oauth_token_secret = token.oauth_token_secret;
@@ -428,7 +424,7 @@ exports.TSinaAPI = {
 		}, this);
     },
     
-    get_request_token: function(user, callback, context) {
+    get_request_token: function(user, auth_callback, callback, context) {
     	if(user.authtype != 'oauth') {
     		user.authtype = 'oauth';
     	}
@@ -441,9 +437,7 @@ exports.TSinaAPI = {
             data: {},
             need_source: false
         };
-		if(this.config.oauth_callback) {
-			params.data.oauth_callback = this.config.oauth_callback;
-		}
+		params.data.oauth_callback = auth_callback;
 		if(this.config.oauth_request_params){
 			Object.extend(params.data, this.config.oauth_request_params);
 		}

@@ -1,17 +1,23 @@
 
 {{if user}}
-${user.username}, Welcome.
+<a href="http://www.instapaper.com/u">${user.username}</a>, 
+已同步 ${user.sync_count || 0} 条收藏.
+<a href="/logout">Logout</a>.
 
-<h2>微博收藏 to <a href="http://www.instapaper.com/">Instapaper</a></h2>
+<h2>微博帐号</h2>
 <ul>
-    {{if binds.tsina}}
+    {{each(type, name) blogtypes}}
     <li>
-        <a href="${binds.tsina.t_url}" target="_blank">@${binds.tsina.screen_name}</a> 
-        <a href="/unbind/${binds.tsina.user_id}">取消绑定</a>
-    </li>
+        <img alt="${type} logo" title="${name}" src="/image/blogs/${type}_16.png" />
+    {{if binds[type]}}
+        <a href="${binds[type].t_url}" target="_blank">@${binds[type].screen_name}</a>,
+        已同步 ${binds[type].sync_count || 0} 条收藏
+        <a href="/unbind/${binds[type].user_id}">取消绑定</a>
     {{else}}
-    <li><a href="/oauth?blogtype=tsina">绑定新浪微博</a></li>
+        <a href="/oauth?blogtype=${type}">绑定${name}</a>
     {{/if}}
+    </li>
+    {{/each}}
 </ul>
 {{else}}
 <form method="post" action="/login">

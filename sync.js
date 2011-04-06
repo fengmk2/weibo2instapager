@@ -2,18 +2,22 @@
 var user_db = require('./user')
   , weibo = require('./node-weibo')
   , tapi = weibo.tapi
-  , instapaper = weibo.instapaper;
+  , instapaper = weibo.instapaper
+  , config = require('./config');
 
 /*
  * start sync
  */
-exports.start = function(seconds) {
+var start = exports.start = function(seconds) {
 	seconds = (seconds || 60) * 1000;
 	setInterval(sync, seconds);
-//	setTimeout(function() {
-//		sync();
-//	}, 1000);
 };
+
+if(config.debug) {
+	setTimeout(function() {
+		sync();
+	}, 500);
+}
 
 function sync() {
 	user_db.list(function(users) {
@@ -38,7 +42,8 @@ function sync_user(user) {
 
 function sync_favorites(user, t_user) {
 	var since_id = t_user.since_id;
-	tapi.favorites({user: t_user}, function(statuses, error) {
+	tapi.favorites({user: t_user}, function(data, error) {
+		var statuses = data.items || data;
 		if(error) {
 			t_user.last_error = error.message || String(error);
 			console.log(error);
@@ -56,16 +61,21 @@ function sync_favorites(user, t_user) {
 			}
 			news.push(status);
 		}
-		console.log('get', statuses.length, 'statuses', news.length, 'news');
+		console.log(t_user.blogtype, t_user.screen_name, 
+			'get', statuses.length, 'statuses', news.length, 'news');
 		var finished = 0, count = news.length;
 		for(var i=0; i<count; i++) {
 			var status = statuses[i];
 			send_to_instapaper(user, status, function(success, error) {
+				if(success) {
+					user.sync_count = (user.sync_count || 0) + 1;
+					t_user.sync_count = (t_user.sync_count || 0) + 1;
+				}
 				if(++finished == count) {
 					t_user.since_id = String(statuses[0].id);
 					if(t_user.since_id !== since_id) {
 						user_db.save(user, function(){
-							console.log(t_user.screen_name, 'done')
+							console.log(t_user.blogtype, t_user.screen_name, 'done')
 						});
 					}
 				}
@@ -80,10 +90,10 @@ function send_to_instapaper(user, status, callback) {
 	if(m) {
 		instapaper.add(user, {url: m[0], selection: status.text}, 
 				function(success, error){
-			console.log(success, {url: m[0]})
+			console.log(success, m[0], error)
 			callback(success, error);
 		});
 	} else {
-		callback(true);
+		callback(false);
 	}
 };

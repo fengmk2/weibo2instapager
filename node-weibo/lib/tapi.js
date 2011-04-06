@@ -2,8 +2,9 @@
 (function(exports){
 
 if(typeof require !== 'undefined') {
-	var TSinaAPI = require('./tsina.js').TSinaAPI,
-		TwitterAPI = require('./twitter.js').TwitterAPI;
+	var TSinaAPI = require('./tsina').TSinaAPI
+	  , TwitterAPI = require('./twitter').TwitterAPI
+	  , TQQAPI = require('./tqq').TQQAPI;
 }
 
 // 封装兼容所有微博的api，自动判断微博类型
@@ -11,7 +12,8 @@ exports.tapi = {
 	
     T_APIS: {
     	'tsina': TSinaAPI,
-    	'twitter': TwitterAPI
+    	'twitter': TwitterAPI,
+    	'tqq': TQQAPI
     },
     
     init: function(blogtype, appkey, secret) {

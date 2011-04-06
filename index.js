@@ -1,13 +1,13 @@
 
 var weibo = require('./node-weibo')
   , express = require('express')
+  , constant = require('./public/js/constant')
   , user_db = require('./user')
-  , sync = require('./sync');
+  , sync = require('./sync')
+  , config = require('./config');
 
-// set weibo appkey
-weibo.init('tsina', '1726331711', '25e94901457772fec1a16d52388011bf');
-
-var home_url = 'http://rl.nodester.com';
+//var home_url = 'http://rl.nodester.com';
+var home_url = config.home_url;
 var app = express.createServer();
 
 //use jqtpl in express
@@ -51,7 +51,8 @@ app.use(weibo.oauth_middleware(home_url, oauth_user_bind));
 app.get('/', function index(req, res, next){
 	var locals = {
 		user: req.current_user,
-		binds: {}
+		binds: {},
+		blogtypes: constant.BLOG_TYPES
 	};
 	if(req.current_user && req.current_user.binds) {
 		var binds = req.current_user.binds;
@@ -80,16 +81,21 @@ app.post('/login', function login(req, res, next){
 	});
 });
 
-app.post('/unbind/:user_id', function unbind(req, res, next) {
+app.get('/logout', function logout(req, res) {
+	res.clearCookie('uid');
+	res.redirect('/');
+});
+
+app.get('/unbind/:user_id', function unbind(req, res, next) {
 	if(req.current_user && req.current_user.binds) {
 		delete req.current_user.binds[req.params.user_id];
-		user_db.save(current_user, function() {
-			callback();
+		user_db.save(req.current_user, function() {
+			res.redirect('/');
 		});
 	}
 });
 
-app.listen(8888);
+app.listen(config.port);
 console.log('web server start');
 
 sync.start();
