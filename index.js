@@ -1,7 +1,11 @@
 
-var weibo = require('node-weibo'),
-	express = require('express'),
-	user_db = require('./user');
+var weibo = require('node-weibo')
+  , express = require('express')
+  , user_db = require('./user')
+  , sync = require('./sync');
+
+// set weibo appkey
+weibo.init('tsina', '1726331711', '25e94901457772fec1a16d52388011bf');
 
 var home_url = 'http://localhost:8888';
 var app = express.createServer();
@@ -19,7 +23,7 @@ app.use(express.bodyParser());
 app.use(express.errorHandler({ dumpExceptions: true }));
 
 // handler login user
-app.use(function(req, res, next) {
+app.use(function wrap_login_user(req, res, next) {
 	var uid = req.cookies.uid;
 	if(uid) {
 		user_db.get(uid, function(user) {
@@ -44,7 +48,7 @@ function oauth_user_bind(oauth_user, referer, req, res, callback) {
 
 app.use(weibo.oauth_middleware(home_url, oauth_user_bind));
 
-app.get('/', function(req, res, next){
+app.get('/', function index(req, res, next){
 	var locals = {
 		user: req.current_user,
 		binds: {}
@@ -59,7 +63,7 @@ app.get('/', function(req, res, next){
 	res.render('index.html', locals);
 });
 
-app.post('/login', function(req, res, next){
+app.post('/login', function login(req, res, next){
 	var user = {
 		username: req.body.username,
 		password: req.body.password
@@ -76,6 +80,17 @@ app.post('/login', function(req, res, next){
 	});
 });
 
+app.post('/unbind/:user_id', function unbind(req, res, next) {
+	if(req.current_user && req.current_user.binds) {
+		delete req.current_user.binds[req.params.user_id];
+		user_db.save(current_user, function() {
+			callback();
+		});
+	}
+});
 
 app.listen(8888);
 console.log('web server start');
+
+sync.start();
+console.log('sync start');

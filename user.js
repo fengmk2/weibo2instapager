@@ -19,7 +19,9 @@ function load_data() {
 		}
 		fs.readFile(cache_path, function(err, data) {
 			if (err) throw err;
-			cache = JSON.parse(data);
+			if(data.length) {
+				cache = JSON.parse(data);
+			}
 		});
 	});
 };
