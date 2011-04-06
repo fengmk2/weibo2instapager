@@ -1,6 +1,6 @@
 
 var user_db = require('./user')
-  , weibo = require('node-weibo')
+  , weibo = require('./node-weibo')
   , tapi = weibo.tapi
   , instapaper = weibo.instapaper;
 

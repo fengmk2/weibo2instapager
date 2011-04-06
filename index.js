@@ -1,5 +1,5 @@
 
-var weibo = require('node-weibo')
+var weibo = require('./node-weibo')
   , express = require('express')
   , user_db = require('./user')
   , sync = require('./sync');
