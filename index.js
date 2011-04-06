@@ -61,7 +61,11 @@ app.get('/', function index(req, res, next){
 			locals.binds[user.blogtype] = user;
 		}
 	}
-	res.render('index.html', locals);
+	user_db.list(function(users) {
+		locals.users = users;
+		res.render('index.html', locals);
+	});
+	
 });
 
 app.post('/login', function login(req, res, next){

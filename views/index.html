@@ -28,3 +28,19 @@
     </fieldset>
 </form>
 {{/if}}
+
+<h2>正在使用</h2>
+{{each(i, user) users}}
+    <span>${user.username}</span>
+    <span>
+    {{if user.binds}}
+    (
+	{{each(id, t_user) user.binds}}
+	    <img alt="${t_user.blogtype} logo" src="/image/blogs/${t_user.blogtype}_16.png" />
+        <a href="${t_user.t_url}" target="_blank">@${t_user.screen_name}</a>
+	{{/each}}
+	)
+	{{/if}}
+	</span>
+	|
+{{/each}}
