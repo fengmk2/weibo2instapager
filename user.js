@@ -1,9 +1,9 @@
 
 var crypto = require('crypto')
   , path = require('path')
-  , fs = require('fs');
+  , Cache = require('./cache').Cache
+  , util = require("util");
 
-var cache = {};
 var cache_path = path.join(__dirname, 'user.cache');
 
 function md5(s) {
@@ -12,45 +12,40 @@ function md5(s) {
 	return hash.digest('hex');
 };
 
-function load_data() {
-	path.exists(cache_path, function(exists){
-		if(!exists) {
-			return;
-		}
-		fs.readFile(cache_path, function(err, data) {
-			if (err) throw err;
-			if(data.length) {
-				cache = JSON.parse(data);
-			}
-		});
-	});
-};
-load_data();
-
-function save_data() {
-	var data = JSON.stringify(cache);
-	fs.writeFile(cache_path, data, function(err){
-		if (err) throw err;
-	});
+function UserCache(filepath) {
+	Cache.call(this, filepath, 2);
 };
 
-exports.save = function(user, callback) {
+util.inherits(UserCache, Cache);
+
+UserCache.prototype.save = function(user) {
 	if(!user.id) {
 		user.id = md5(user.username);
 	}
-	cache[user.id] = user;
-	save_data();
-	callback(user);
+	this.set(user.id, user);
 };
 
-exports.get = function(id, callback) {
-	callback(cache[id]);
-};
-
-exports.list = function(callback) {
+UserCache.prototype.list = function() {
 	var users = [];
-	for(var id in cache) {
-		users.push(cache[id]);
+	for(var id in this._cache) {
+		users.push(this._cache[id]);
 	}
-	callback(users);
+	return users;
+};
+
+var db = null;
+
+exports.connect = function(callback) {
+	if(db) {
+		callback(db);
+		return;
+	}
+	db = new UserCache(cache_path);
+	db.load(function() {
+		callback(db);
+	});
+	process.on('exit', function() {
+		db.close(true);
+		console.log('exit.');
+	});
 };

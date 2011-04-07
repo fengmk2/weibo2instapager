@@ -1,23 +1,28 @@
-
 (function(exports){
 
+	
 if(typeof require !== 'undefined') {
 	var TSinaAPI = require('./tsina').TSinaAPI
 	  , TwitterAPI = require('./twitter').TwitterAPI
 	  , TQQAPI = require('./tqq').TQQAPI;
+} else {
+	var TSinaAPI = tsina.TSinaAPI
+	  , TwitterAPI = twitter.TwitterAPI
+	  , TQQAPI = tqq.TQQAPI;
 }
 
 // 封装兼容所有微博的api，自动判断微博类型
-exports.tapi = {
+Object.extend(exports, {
 	
-    T_APIS: {
+    TYPES: {
     	'tsina': TSinaAPI,
+    	'weibo': TSinaAPI, // alias to tsina
     	'twitter': TwitterAPI,
     	'tqq': TQQAPI
     },
     
     init: function(blogtype, appkey, secret) {
-        var api = this.T_APIS[blogtype];
+        var api = this.TYPES[blogtype];
         if(!api) {
             throw new Error(blogtype + ' api not exists.');
         }
@@ -27,7 +32,7 @@ exports.tapi = {
 
     // 自动判断当前用户所使用的api, 根据user.blogType判断
     api_dispatch: function(data) {
-		return this.T_APIS[(data.user ? data.user.blogtype : data.blogtype) || 'tsina'];
+		return this.TYPES[(data.user ? data.user.blogtype : data.blogtype) || 'tsina'];
 	},
 	
 	// 获取配置信息
@@ -320,11 +325,12 @@ exports.tapi = {
     status_show: function(data, callback, context) {
     	return this.api_dispatch(data).status_show(data, callback, context);
     }
-};
+});
 
 })( (function(){
 	if(typeof exports === 'undefined') {
-		return window;
+		window.tapi = {};
+		return window.tapi;
 	} else {
 		return exports;
 	}

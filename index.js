@@ -1,14 +1,15 @@
-
-var weibo = require('./node-weibo')
-  , express = require('express')
+var config = require('./config');
+var express = require('express')
   , constant = require('./public/js/constant')
-  , user_db = require('./user')
-  , sync = require('./sync')
-  , config = require('./config');
+  , user_cache = require('./user')
+  , sync = require('./sync');
+
+var weibo = config.weibo;
 
 //var home_url = 'http://rl.nodester.com';
 var home_url = config.home_url;
 var app = express.createServer();
+var user_db = null;
 
 //use jqtpl in express
 app.set("view engine", "html");
@@ -26,13 +27,9 @@ app.use(express.errorHandler({ dumpExceptions: true }));
 app.use(function wrap_login_user(req, res, next) {
 	var uid = req.cookies.uid;
 	if(uid) {
-		user_db.get(uid, function(user) {
-			req.current_user = user;
-			next();
-		});
-	} else {
-		next();
+		req.current_user = user_db.get(uid);
 	}
+	next();
 });
 
 function oauth_user_bind(oauth_user, referer, req, res, callback) {
@@ -41,9 +38,8 @@ function oauth_user_bind(oauth_user, referer, req, res, callback) {
 	var user_id = oauth_user.blogtype + ':' + oauth_user.id;
 	oauth_user.user_id = user_id;
 	current_user.binds[user_id] = oauth_user;
-	user_db.save(current_user, function() {
-		callback();
-	});
+	user_db.save(current_user);
+	callback();
 };
 
 app.use(weibo.oauth_middleware(home_url, oauth_user_bind));
@@ -61,10 +57,8 @@ app.get('/', function index(req, res, next){
 			locals.binds[user.blogtype] = user;
 		}
 	}
-	user_db.list(function(users) {
-		locals.users = users;
-		res.render('index.html', locals);
-	});
+	locals.users = user_db.list();
+	res.render('index.html', locals);
 	
 });
 
@@ -75,10 +69,9 @@ app.post('/login', function login(req, res, next){
 	};
 	weibo.instapaper.authenticate(user, function(auth_user, err){
 		if(auth_user) {
-			user_db.save(user, function(save_user){
-				res.cookie('uid', save_user.id, {maxAge: 3600000000, path: '/'});
-				res.redirect('/');
-			});
+			user_db.save(user);
+			res.cookie('uid', user.id, {maxAge: 3600000000, path: '/'});
+			res.redirect('/');
 		} else {
 			res.send(err);
 		}
@@ -93,14 +86,16 @@ app.get('/logout', function logout(req, res) {
 app.get('/unbind/:user_id', function unbind(req, res, next) {
 	if(req.current_user && req.current_user.binds) {
 		delete req.current_user.binds[req.params.user_id];
-		user_db.save(req.current_user, function() {
-			res.redirect('/');
-		});
+		user_db.save(req.current_user);
+		res.redirect('/');
 	}
 });
 
-app.listen(config.port);
-console.log('web server start');
+user_cache.connect(function(db) {
+	user_db = db;
+	app.listen(config.port);
+	console.log('web server start');
 
-sync.start();
-console.log('sync start');
+	sync.start(user_db);
+	console.log('sync start');
+});

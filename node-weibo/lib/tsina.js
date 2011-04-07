@@ -10,6 +10,8 @@ if(typeof require !== 'undefined') {
 		path = require('path'),
 		OAuth = require('./oauth').OAuth,
 		urllib = require('./urllib');
+} else {
+	var OAuth = oauth.OAuth;
 }
 
 // destination, source1[, source2, ...]
@@ -69,9 +71,9 @@ var RE_JSON_BAD_WORD = /[\u000B\u000C]/ig; //具体见：http://www.cnblogs.com/
 exports.TSinaAPI = {
 	
 	config: {
-		host: 'http://api.t.sina.com.cn',
-        user_home_url: 'http://t.sina.com.cn/n/',
-        search_url: 'http://t.sina.com.cn/k/',
+		host: 'http://api.weibo.com',
+        user_home_url: 'http://weibo.com/n/',
+        search_url: 'http://weibo.com/k/',
 		result_format: '.json',
 		source: '',
         oauth_key: '',
@@ -178,48 +180,16 @@ exports.TSinaAPI = {
     		args.data_type = 'json';
     	}
     	urllib.request(url, args, function(data, error, res){
-    		if(data && args.play_load != 'string') {
-    			data = this.format_result(data, args.play_load, args);
+    		if(args.play_load != 'string') {
+        		if(error) {
+        			// create error, format error to {message: error message}
+        			error = this.format_error(error, res);
+        		} else if(data){
+        			data = this.format_result(data, args.play_load, args);
+        		}
     		}
     		callback.call(context, data, error, res);
     	}, this);
-    },
-    
-    // callback.call(context, data, error, res || xhr)
-    _ajax_request: function(url, args, callback, context) {
-    	if(!args) {
-    		args = {};
-    	}
-    	jQuery.ajax(url, {
-    		url: url,
-	        timeout: 60*1000, //一分钟超时
-	        type: args.type,
-	        data: args.content || args.data,
-	        processData: !args.content,
-	        dataType: 'text',
-	        context: this,
-	        beforeSend: function(req) {
-	      		for(var key in args.headers) {
-	      			req.setRequestHeader(key, args.headers[key]);
-	      		}
-	      	},
-	      	complete: function(xhr, result) {
-	      		// TODO: finished ajax request
-	      		var data = xhr.responseText;
-	      		var error = null;
-	      		if(result == 'success') {
-	      			if(args.play_load !== 'string') {
-	      				data = data.replace(RE_JSON_BAD_WORD, '');
-	      				data = this.format_result(JSON.parse(data), args.play_load, args);
-	      			}
-	      		} else {
-	      			error = data;
-	      			// TODO: format error
-	      			data = null;
-	      		}
-	      		callback.call(context, data, error, xhr);
-	      	}
-    	});
     },
     
     _send_request: function(params, callback, context) {
@@ -271,83 +241,6 @@ exports.TSinaAPI = {
     	this.request(api, {data: params}, callback);
     },
 
-    /**
-     * 处理内容
-     */
-    processMsg: function (str, notEncode) {
-        if(!str){ return ''; }
-        if(!this.config.need_processMsg) { // 无需处理
-        	return str;
-        }
-        if(!notEncode){
-            str = HTMLEnCode(str);
-        }
-
-        var re = new RegExp('(?:\\[url\\s*=\\s*|)((?:www\\.|http[s]?://)[\\w\\.\\?%&\\-/#=;:!\\+~]+)(?:\\](.+)\\[/url\\]|)', 'ig');
-        str = str.replace(re, this._replaceUrl);
-        
-        str = this.processAt(str); //@***
-
-        str = this.processSearch(str);
-       
-        str = this.processEmotional(str);
-
-        str = str.replace( /([\uE001-\uE537])/gi, this.getIphoneEmoji );
-        
-        return str;
-    },
-    
-    getIphoneEmoji: function(str){
-        return "<span class=\"iphoneEmoji "+ str.charCodeAt(0).toString(16).toUpperCase()+"\"></span>";
-    },
-    
-    processSearch: function (str) {
-    	var search_url = this.config.search_url;
-        str = str.replace(/#([^#]+)#/g, function(m, g1) {
-        	// 修复#xxx@xxx#嵌套问题
-        	var search = g1.remove_html_tag();
-        	return '<a target="_blank" href="'+ search_url + '{{search}}" title="Search #{{search}}">#{{search}}#</a>'.format({search: search});
-        });
-        return str;
-    },
-    processAt: function (str) { //@*** u4e00-\u9fa5:中文字符 \u2E80-\u9FFF:中日韩字符
-        str = str.replace(/@([\w\-\u2E80-\u9FFF\_]+)/g, '<a target="_blank" href="javascript:getUserTimeline(\'$1\');" rhref="'+ this.config.user_home_url +'$1" title="左键查看微薄，右键打开主页">@$1</a>');
-//        str = str.replace(/([^#])@([\w\-\u4e00-\u9fa5\_]+)/g, '$1<a target="_blank" href="javascript:getUserTimeline(\'$2\');" rhref="'+ this.config.user_home_url +'$2" title="左键查看微薄，右键打开主页">@$2</a>');
-        
-        return str;
-    },
-    processEmotional: function(str){
-        str = str.replace(/\[([\u4e00-\u9fff,\uff1f,\w]{1,4})\]/g, this._replaceEmotional);
-        return str;
-    },
-    _replaceUrl: function(m, g1, g2){
-        var _url = g1;
-        if(g1.indexOf('http') != 0){
-            _url = 'http://' + g1;
-        }
-        return '<a target="_blank" class="link" href="{{url}}">{{value}}</a>'.format({
-            url: _url, title: g1, value: g2||g1
-        });
-    },
-    _replaceEmotional: function(m, g1){
-        var tpl = '<img title="{{title}}" src="{{src}}" />';
-        if(window.emotionalDict && g1) {
-            if(emotionalDict[g1]){
-                var src = emotionalDict[g1];
-                if(src.indexOf('http') != 0){
-                    src = '/images/faces/' + src + '.gif';
-                }
-                return tpl.format({title: m, src: src});
-            }
-            var other = TSINA_API_EMOTIONS[g1] || TSINA_FACES[g1];
-            if(other) {
-                return tpl.format({title: m, src: TSINA_FACE_URL_PRE + other});
-            }
-        }
-        return m;
-    },
-    
-
 	// 设置认证头
     // user: {username, password, authtype}
     // oauth 过程简介: 
@@ -358,7 +251,7 @@ exports.TSinaAPI = {
 		if(!user) {
 			return;
 		}
-        user.authtype = user.authtype || 'baseauth'; //兼容旧版本
+        user.authtype = user.authtype || 'baseauth';
 
 		if(user.authtype == 'baseauth') {
 			if(user.username && user.password) {
@@ -447,13 +340,17 @@ exports.TSinaAPI = {
 				token = querystring.parse(token_str);
 				if(!token.oauth_token) {
 					token = null;
-					error = error || token_str;
+					error = {message: error || token_str};
 				}
 			} else if(error) {
 				// request=%2Foauth%2Frequest_token&error_code=401&error=40109%3AOauth+Error%3A+consumer_key_refused%21&error_CN=%E9%94%99%E8%AF%AF%3Aconsumer_key%E4%B8%8D%E5%90%88%E6%B3%95%21
-				error = querystring.parse(error);
-				if(!error.message) {
-					error.message = error.error_CN || error.error;
+				try {
+					error = querystring.parse(error);
+					if(!error.message) {
+						error.message = error.error_CN || error.error;
+					}
+				} catch(e) {
+					error = {message: error}
 				}
 			}
 			callback.call(context, token, error, response);
@@ -812,7 +709,7 @@ exports.TSinaAPI = {
 	    builder += crlf;
 	    builder += crlf;
 	    
-	    var me = this;
+	    var that = this;
 	    // 处理文件内容
 	    fs.stat(pic, function(err, stats) {
 	    	fs.readFile(pic, function (err, data) {
@@ -826,7 +723,7 @@ exports.TSinaAPI = {
 	    		offset += stats.size;
 	    		buffer.write(endstr, offset);
 	    		auth_args.headers['Content-Type'] = 'multipart/form-data; boundary=' + boundary;
-		    	me.request(url, {
+	    		that.request(url, {
 		    		type: 'POST', 
 		    		play_load: 'status', 
 		    		data: buffer, 
@@ -1006,6 +903,18 @@ exports.TSinaAPI = {
         this._send_request(params, callback);
     },
     
+    format_error: function(error, res) {
+    	try {
+    		error = JSON.parse(error);
+    		if(!error.message) {
+				error.message = error.error_CN || error.error;
+			}
+    	} catch(e) {
+    		error = {message: error};
+    	}
+    	return error;
+    },
+    
     // 格式化数据格式，其他微博实现兼容新浪微博的数据格式
     // play_load: status, user, comment, message, count, result(reset_count)
     // args: request arguments
@@ -1031,7 +940,7 @@ exports.TSinaAPI = {
 	
 	format_result_item: function(data, play_load, args) {
 		if(play_load == 'user' && data && data.id) {
-			data.t_url = 'http://t.sina.com.cn/' + (data.domain || data.id);
+			data.t_url = 'http://weibo.com/' + (data.domain || data.id);
 		} else if(play_load == 'status') {
 			if(!data.user) { // search data
 				data.user = {
@@ -1079,7 +988,8 @@ exports.TSinaAPI = {
 
 })( (function(){
 	if(typeof exports === 'undefined') {
-		return window;
+		window.tsina = {};
+		return window.tsina;
 	} else {
 		return exports;
 	}

@@ -114,7 +114,7 @@ Object.extend(TQQAPI, {
     	});
     },
 	
-	before_sendRequest: function(args, user) {
+    before_send_request: function(args, user) {
 		if(args.play_load == 'string') {
 			// oauth
 			return;
@@ -355,7 +355,8 @@ Object.extend(TQQAPI, {
 
 })( (function(){
 	if(typeof exports === 'undefined') {
-		return window;
+		window.tqq = {};
+		return window.tqq;
 	} else {
 		return exports;
 	}

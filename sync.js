@@ -1,14 +1,15 @@
 
-var user_db = require('./user')
-  , weibo = require('./node-weibo')
-  , tapi = weibo.tapi
-  , instapaper = weibo.instapaper
-  , config = require('./config');
+var config = require('./config');
+
+var tapi = config.weibo.tapi
+  , instapaper = config.weibo.instapaper;
+var user_db = null;
 
 /*
  * start sync
  */
-var start = exports.start = function(seconds) {
+var start = exports.start = function(user_cache, seconds) {
+	user_db = user_cache;
 	seconds = (seconds || 60) * 1000;
 	setInterval(sync, seconds);
 };
@@ -20,12 +21,10 @@ if(config.debug) {
 }
 
 function sync() {
-	user_db.list(function(users) {
-		console.log('sync', users.length, 'users');
-		for(var i=0; i<users.length; i++) {
-			sync_user(users[i]);
-		}
-	});
+	var users = user_db.list();
+	for(var i=0; i<users.length; i++) {
+		sync_user(users[i]);
+	}
 };
 
 function sync_user(user) {
@@ -38,7 +37,6 @@ function sync_user(user) {
 		sync_favorites(user, binds[k]);
 	}
 };
-
 
 function sync_favorites(user, t_user) {
 	var since_id = t_user.since_id;
@@ -74,9 +72,8 @@ function sync_favorites(user, t_user) {
 				if(++finished == count) {
 					t_user.since_id = String(statuses[0].id);
 					if(t_user.since_id !== since_id) {
-						user_db.save(user, function(){
-							console.log(t_user.blogtype, t_user.screen_name, 'done')
-						});
+						user_db.save(user);
+						console.log(t_user.blogtype, t_user.screen_name, 'done')
 					}
 				}
 			});

@@ -1,6 +1,6 @@
 // oauth login handler
 
-var tapi = require('./tapi').tapi
+var tapi = require('./tapi')
   , utils = require('connect').utils
   , urlutil = require('url');
 
